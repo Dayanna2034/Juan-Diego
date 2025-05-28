@@ -1,14 +1,17 @@
-// Escena, cámara y renderer
+import * as THREE from 'three';
+
+import { VRButton } from 'three/addons/webxr/VRButton.js';
+
+
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(
-  75,
-  window.innerWidth / window.innerHeight,
-  0.1,
-  1000
-);
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
+renderer.xr.enabled = true;
+renderer.xr.setReferenceSpaceType( 'local' );
+////////////////////////////
+document.body.appendChild( renderer.domElement );
+document.body.appendChild( VRButton.createButton( renderer ) );//
 
 // Luces
 const light = new THREE.DirectionalLight(0xffffff, 1);
@@ -97,32 +100,6 @@ gun.rotation.y = Math.PI;
 // Agregar la pistola como hija de la cámara para que se mueva con ella
 camera.add(gun);
 scene.add(camera); 
-
-///////////////////
-// Soporte VR //
-///////////////////
-const xrButton = document.createElement('button');
-xrButton.style.position = 'absolute';
-xrButton.style.top = '10px';
-xrButton.style.left = '10px';
-xrButton.innerHTML = 'Iniciar VR';
-document.body.appendChild(xrButton);
-
-///////////////////
-// Activar VR //
-///////////////////
-
-xrButton.addEventListener('click', () => {
-  if (renderer.xr.isPresenting) {
-    renderer.xr.getSession().end();
-  } else {
-    navigator.xr.requestSession('immersive-vr').then((session) => {
-      renderer.xr.enabled = true;
-      renderer.xr.setSession(session);
-      document.body.appendChild(renderer.domElement); // Asegúrate de que el canvas se muestre
-    });
-  }
-});
 
 // Configuración de los controladores de VR
 const controller1 = renderer.xr.getController(0);
