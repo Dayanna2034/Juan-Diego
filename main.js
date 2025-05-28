@@ -113,12 +113,11 @@ window.addEventListener("click", (event) => {
 ///////////////
 
 function animate() {
-  requestAnimationFrame(animate);
   controls.update();
-  renderer.render(scene, camera);
+    renderer.render(scene, camera);
 }
-
 animate();
+renderer.setAnimationLoop(animate);
 ////////////////////////
 // Redimensionamiento //
 ////////////////////////
