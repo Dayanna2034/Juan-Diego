@@ -10,21 +10,11 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// Controles de órbita (desactivados para VR)
-const controls = new THREE.OrbitControls(camera, renderer.domElement);
-camera.position.set(0, 1.6, 0); // Estar en el centro, altura promedio humana
-controls.target.set(0, 1.6, 0); // Mira hacia el frente desde esa altura
-controls.update();
-
 // Luces
 const light = new THREE.DirectionalLight(0xffffff, 1);
 light.position.set(10, 10, 10);
 scene.add(light);
 scene.add(new THREE.AmbientLight(0x404040));
-
-// Raycaster y mouse
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
 
 // Texturas aleatorias
 const textures = [
@@ -40,10 +30,7 @@ function getRandomTexture() {
   return loader.load(textures[index]);
 }
 
-/////////////
-//  sprite //
-/////////////
-
+// Crear el objetivo como sprite
 function createTargetSprite() {
   const texture = getRandomTexture(); // Asigna una textura aleatoria para el sprite
   const spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true });
@@ -57,9 +44,7 @@ function createTargetSprite() {
 const target = createTargetSprite();
 scene.add(target);
 
-///////////////////////////////////////////////////
-// Función para mover el objetivo aleatoriamente //
-///////////////////////////////////////////////////
+// Función para mover el objetivo aleatoriamente
 function moveTargetRandomly() {
   const range = 10; // Aumento el rango para una mayor aleatoriedad
   const x = (Math.random() - 0.5) * 2 * range;
@@ -67,16 +52,14 @@ function moveTargetRandomly() {
   const z = (Math.random() - 0.5) * 2 * range;
   target.position.set(x, y, z);
   
-  //  textura aleatoria 
+  // Textura aleatoria 
   target.material.map = getRandomTexture();
   target.material.needsUpdate = true;
 }
 
 moveTargetRandomly(); // Posición inicial del objetivo
-/////////
-// box //
-/////////
 
+// Skybox (fondo)
 const textureCube = new THREE.CubeTextureLoader()
   .setPath('textures/') 
   .load([
@@ -87,48 +70,14 @@ const textureCube = new THREE.CubeTextureLoader()
     'posz.jpg', // Delante
     'negz.jpg'  // Detrás
   ]);
-
-  // Establecer el skybox como fondo
-
 scene.background = textureCube;
 
-////////////////////////////////////////////////////////////////////
-// Detectar clics (solo en escritorio, en VR se maneja distinto) //
-///////////////////////////////////////////////////////////////////
-
-window.addEventListener("click", (event) => {
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-  raycaster.setFromCamera(mouse, camera);
-  const intersects = raycaster.intersectObject(target);
-
-  if (intersects.length > 0) {
-    console.log("capturaste el pokemon");
-    moveTargetRandomly(); // Mueve el objetivo aleatoriamente después de acertar
-  }
-});
-///////////////
-// Animación //
-///////////////
-
-function animate() {
-  controls.update();
-    renderer.render(scene, camera);
-}
-animate();
-renderer.setAnimationLoop(animate);
-////////////////////////
-// Redimensionamiento //
-////////////////////////
-
+// Redimensionamiento
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
-
-
 
 // Crear la "pistola" como un plano delante de la cámara
 const gunGeometry = new THREE.PlaneGeometry(0.4, 0.4);
@@ -148,19 +97,20 @@ gun.rotation.y = Math.PI;
 // Agregar la pistola como hija de la cámara para que se mueva con ella
 camera.add(gun);
 scene.add(camera); 
-////////////////
-// soporte VR //
-///////////////
 
+///////////////////
+// Soporte VR //
+///////////////////
 const xrButton = document.createElement('button');
 xrButton.style.position = 'absolute';
 xrButton.style.top = '10px';
 xrButton.style.left = '10px';
 xrButton.innerHTML = 'Iniciar VR';
 document.body.appendChild(xrButton);
-////////////////
+
+///////////////////
 // Activar VR //
-///////////////
+///////////////////
 
 xrButton.addEventListener('click', () => {
   if (renderer.xr.isPresenting) {
@@ -169,13 +119,49 @@ xrButton.addEventListener('click', () => {
     navigator.xr.requestSession('immersive-vr').then((session) => {
       renderer.xr.enabled = true;
       renderer.xr.setSession(session);
+      document.body.appendChild(renderer.domElement); // Asegúrate de que el canvas se muestre
     });
   }
 });
-////////////////////
-// Ajuste para VR //
-///////////////////
+
+// Configuración de los controladores de VR
 const controller1 = renderer.xr.getController(0);
 const controller2 = renderer.xr.getController(1);
 scene.add(controller1);
 scene.add(controller2);
+
+// Crear un raycaster para interactuar con los objetos
+const controllerRaycaster = new THREE.Raycaster();
+const controllerIntersectedObjects = [target]; // Aquí defines los objetos a los que puedes interactuar
+
+// Función para actualizar el controlador y disparar rayos
+function updateController(controller) {
+  const controllerPosition = controller.position.clone();
+  const controllerRotation = controller.rotation.clone();
+  const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(controllerRotation);
+  const controllerRay = new THREE.Ray(controllerPosition, direction);
+
+  controllerRaycaster.ray = controllerRay;
+
+  // Detectar interacciones con los objetos
+  const intersects = controllerRaycaster.intersectObjects(controllerIntersectedObjects);
+  if (intersects.length > 0) {
+    console.log('Objetivo alcanzado');
+    moveTargetRandomly(); // Mover el objetivo aleatoriamente
+  }
+}
+
+///////////////
+// Animación //
+///////////////
+function animate() {
+  // Actualizar controladores
+  updateController(controller1);
+  updateController(controller2);
+  
+  // Renderizar la escena
+  renderer.render(scene, camera);
+}
+
+// Iniciar el ciclo de animación
+renderer.setAnimationLoop(animate);
